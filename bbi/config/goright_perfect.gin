@@ -1,17 +1,17 @@
-train_agent.training_loops      = 600
-train_agent.n_steps             = 500
-train_agent.step_size           = 0.1
-train_agent.initial_value       = 0.0
-train_agent.discount            = 0.9
-train_agent.max_horizon         = 5
-train_agent.tau                 = 1.0
+TrainingConfig.n_episodes          = 600
+TrainingConfig.n_steps             = 500
+TrainingConfig.step_size           = 0.1
+TrainingConfig.initial_value       = 0.0
+TrainingConfig.discount            = 0.9
+TrainingConfig.max_horizon         = 5
+TrainingConfig.tau                 = 1.0
 
-train_agent.environment_id      = "GoRight-v0"
-train_agent.model_type          = "perfect"
-train_agent.uncertainty_type    = "unselective"
-train_agent.obs_shape           = (11,3,2,2)
-train_agent.status_intensities  = [0,5,10]
+TrainingConfig.environment_id      = "GoRight-v0"
+TrainingConfig.model_type          = "perfect"
+TrainingConfig.uncertainty_type    = "unselective"
+TrainingConfig.obs_shape           = (11,3,2,2)
+TrainingConfig.status_intensities  = [0,5,10]
 
-train_agent.project             = "BBI"
-train_agent.notes               = "GoRight environment with the perfect model and h=5"
-train_agent.group_name          = "goright_perfect"
+TrainingConfig.experiment_name     = "bbi_experiments"
+TrainingConfig.notes               = "GoRight environment with the perfect model and h=5"
+TrainingConfig.run_group           = "goright_perfect"

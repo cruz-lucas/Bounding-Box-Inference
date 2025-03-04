@@ -12,6 +12,6 @@ train_agent.uncertainty_type    = "bbi"
 train_agent.obs_shape           = (11,3,2,2)
 train_agent.status_intensities  = [0,5,10]
 
-train_agent.project             = "BBI"
+train_agent.experiment_name     = "bbi_experiments"
 train_agent.notes               = "BBI with GoRight environment"
-train_agent.group_name          = "goright_bbi_debug"
+train_agent.run_group           = "goright_bbi"

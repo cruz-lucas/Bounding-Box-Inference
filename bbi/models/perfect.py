@@ -94,11 +94,17 @@ class PerfectModel(ModelBase):
         )
 
         _, exp_reward, _, _, _ = self.step(action)
-        exp_obs = self.state.get_state()[self.state.mask]
+        state = self.state.get_state()
+        exp_obs = state[self.state.mask]
+        previous_status = state[~self.state.mask]
+
+        assert len(previous_status) == 1
+        previous_status = int(previous_status[0])
 
         exp_obs[1] = np.argwhere(self.status_intensities == exp_obs[1])
         exp_obs = [int(i) for i in exp_obs]
-        return (tuple(exp_obs), exp_reward)
+
+        return (tuple(exp_obs), exp_reward, previous_status)
 
     def update(
         self,

@@ -89,7 +89,7 @@ class BoundingBoxPlanningAgent:
         if eps is None:
             eps = self.epsilon
         if self.rng.random() < eps:
-            chosen = int(self.rng.integers(0, self.num_actions))
+            chosen = int(self.rng.integers(self.num_actions))
             logger.debug(f"Random action chosen: {chosen}")
             return chosen
         else:
@@ -157,16 +157,16 @@ class BoundingBoxPlanningAgent:
         logger.debug(f"Real transition: s={s}, action={action}, s'={s_prime}, reward={reward}, q(s)={self.Q[s]}, q(s')={self.Q[s_prime]}")
         logger.debug(f"1-step TD target: {target_real}")
 
-        planning_state = s_prime
+        pred_state = s_prime
         planning_action = self.act(s_prime, eps=0.0)
 
-        state_bb = (planning_state, planning_state)
+        state_bb = (pred_state, pred_state)
         action_bb = [planning_action]
 
         for h in range(1, self.horizon):
             if self.uncertainty_type == "bbi":
                 prediction = model.predict(
-                    obs=planning_state,
+                    obs=pred_state,
                     action=planning_action,
                     state_bb=state_bb,
                     action_bb=action_bb,
@@ -206,21 +206,40 @@ class BoundingBoxPlanningAgent:
 
             elif self.uncertainty_type == "unselective":
                 if isinstance(model, PerfectModel):
-                    env_state = model.state.get_state()
-                    prev_status = int(env_state[1])
+                    if prev_status is None:
+                        raise ValueError("Planning with perfect model must receive the previous status.")
 
-                prediction = model.predict(
-                    obs=planning_state,
-                    action=planning_action,
-                    state_bb=None,
-                    action_bb=None,
-                    prev_status=prev_status,
-                )
-                if len(prediction) != 2:
-                    raise ValueError(
-                        f"Prediction must have len 2 with unselective planning. Got: {len(prediction)}"
+                    prediction = model.predict(
+                        obs=pred_state,
+                        action=planning_action,
+                        state_bb=None,
+                        action_bb=None,
+                        prev_status=prev_status,
                     )
-                (pred_state, pred_reward) = prediction
+
+                    if len(prediction) != 3:
+                        raise ValueError(
+                            f"Prediction must have len 3 with unselective planning with perfect model. Got: {len(prediction)}"
+                    )
+                    (pred_state, pred_reward, prev_status) = prediction
+
+                else:
+                    if prev_status is not None:
+                        raise ValueError(f"Planning with any other model rather than the perfect model must NOT receive the previous status. Got: {prev_status}. Expected: None") 
+
+                    prediction = model.predict(
+                        obs=pred_state,
+                        action=planning_action,
+                        state_bb=None,
+                        action_bb=None,
+                        prev_status=None,
+                    )
+                    
+                    if len(prediction) != 2:
+                        raise ValueError(
+                            f"Prediction must have len 2 with unselective planning. Got: {len(prediction)}"
+                        )
+                    (pred_state, pred_reward) = prediction
 
                 q_pred = np.max(self.Q[pred_state])
                 target_pred = pred_reward + gamma * q_pred
@@ -240,8 +259,7 @@ class BoundingBoxPlanningAgent:
             targets.append(target_pred)
             uncertainties.append(uncertainty)
 
-            planning_state = pred_state
-            planning_action = self.act(s_prime, eps=0.0)
+            planning_action = self.act(pred_state, eps=0.0)
 
         weights = softmin(np.array(uncertainties))
         final_target = np.dot(weights, np.array(targets))

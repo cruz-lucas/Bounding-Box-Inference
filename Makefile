@@ -5,40 +5,29 @@ IMAGE_NAME := bbi
 CONTAINER_NAME := bbi
 WORKDIR_PATH := /workspace
 
-# Build the Docker image
-build:
-	docker build \
-		--build-arg CUDA=$(CUDA) \
-		--build-arg TAG=$(TAG) \
-		--build-arg OS=$(OS) \
-		--build-arg WORKDIR_PATH=$(WORKDIR_PATH) \
-		-t $(IMAGE_NAME) .
+docker-up:
+	docker-compose -f docker/docker-compose.yml up -d --build --remove-orphans
 
-# Run the Docker container with the current folder attached as a volume
-run:
-	docker run --rm -it \
-		--name $(CONTAINER_NAME) \
-		-v $(shell pwd):$(WORKDIR_PATH) \
-		-u $(USER_ID):$(GROUP_ID) \
-		$(IMAGE_NAME)
+docker-down:
+	docker-compose -f docker/docker-compose.yml down
 
 q-learning:
-	python train.py --config_file="goright_qlearning" --n_seeds=50 --start_seed=00
+	python train.py --config_file="goright_qlearning" --n_seeds=50 --start_seed=0
 
 perfect:
-	python train.py --config_file="goright_perfect" --n_seeds=1 --start_seed=11 --debug=True
+	python train.py --config_file="goright_perfect" --n_seeds=50 --start_seed=0
 
 expect-2:
-	python train.py --config_file="goright_expected_h2" --n_seeds=50 --start_seed=0
+	python train.py --config_file="goright_expected_h2" --n_seeds=1 --start_seed=0
 
 expect-5:
-	python train.py --config_file="goright_expected_h5" --n_seeds=50 --start_seed=0
+	python train.py --config_file="goright_expected_h5" --n_seeds=1 --start_seed=99
 
 sampling-2:
 	python train.py --config_file="goright_sampling_h2" --n_seeds=40 --start_seed=10
 
 sampling-5:
-	python train.py --config_file="goright_sampling_h5" --n_seeds=50 --start_seed=0
+	python train.py --config_file="goright_sampling_h5" --n_seeds=1 --start_seed=99
 
 bounding-box:
 	python train.py --config_file="goright_bbi" --n_seeds=50 --start_seed=0

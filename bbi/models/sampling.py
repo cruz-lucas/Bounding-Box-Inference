@@ -82,22 +82,6 @@ class SamplingModel(ModelBase):
         else:
             raise ValueError("_np_random must be a Random Generator.")
 
-    def _compute_next_status_random(
-        self, previous_status: int = 0, current_status: int = 0
-    ) -> int:
-        """Returns the expected next status.
-
-        Returns:
-            int: Expected next status.
-        """
-        if self._np_random is None:
-            raise ValueError("_np_random can't be None for the sampling model, please set a seed when resetting.")
-
-        elif isinstance(self._np_random, np.random.Generator):
-            return self._np_random.choice(self.status_intensities)
-
-        else:
-            raise ValueError("_np_random must be a Random Generator.")
 
     def _compute_next_prize_indicators(
         self,
@@ -178,7 +162,6 @@ class SamplingModel(ModelBase):
             prize_indicators=np.array(prize),
         )
 
-        self._compute_next_status = self._compute_next_status_random
         _, exp_reward, _, _, _ = self.step(action)
         exp_obs = self.state.get_state()[self.state.mask]
 

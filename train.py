@@ -2,312 +2,226 @@
 
 import argparse
 import logging
-import os
+import multiprocessing as mp
 import traceback
-from multiprocessing import Process
-from typing import List, Tuple
+from typing import Dict, Optional, Tuple
 
+import wandb
 import gin
 import goright.env
 import gymnasium as gym
-import numpy as np
-import wandb
-from wandb.util import generate_id
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import structlog
+from structlog import get_logger
+from structlog.stdlib import LoggerFactory
 
 import goright
 from bbi.agent import BoundingBoxPlanningAgent
 from bbi.models import ExpectationModel, ModelBase, PerfectModel, SamplingModel
+from bbi.config.training_config import TrainingConfig, EpisodeMetrics, setup_wandb
 
-logger = logging.getLogger(__name__)
 
+MODEL_CLS = {
+    "expectation": ExpectationModel,
+    "sampling": SamplingModel,
+    "perfect": PerfectModel,
+    "none": ModelBase
+}
+
+logging.basicConfig(
+    format="%(message)s",
+    # stream=sys.stdout,
+    level=logging.DEBUG,
+    filename='training_output.log'
+)
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer()
+    ],
+    logger_factory=LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+logger = get_logger()
+
+def run_episode(
+    env: gym.Env,
+    agent: BoundingBoxPlanningAgent,
+    model: ModelBase,
+    config: TrainingConfig,
+    episode_seed: int,
+    training: bool = True,
+) -> Tuple[EpisodeMetrics, Dict]:
+    """Run a single training or evaluation episode."""
+    metrics = EpisodeMetrics()
+    obs, info = env.reset(seed=episode_seed)
+    
+    agent.epsilon = 1.0 if training else 0.0
+    prev_status = None
+    
+    for step in range(config.n_steps):
+        action = agent.act(obs)
+        next_obs, reward, terminated, truncated, info = env.step(action)
+        
+        if training:
+            if config.model_type == "perfect":
+                env_unwrapped = env.unwrapped
+                if not isinstance(env_unwrapped, (ModelBase, goright.env.GoRight)):
+                    raise ValueError(f"Environment must inherit ModelBase. Got: {type(env_unwrapped)}")
+                env_state = env_unwrapped.state.get_state()
+                prev_status = int(env_state[1])
+            
+            td_error = agent.update(
+                obs=obs,
+                action=action,
+                next_obs=next_obs,
+                reward=float(reward),
+                model=model,
+                prev_status=prev_status,
+            )
+        else:
+            td_error = None
+            
+        metrics.update(
+            reward=float(reward),
+            discount=config.discount,
+            step=step,
+            td_error=td_error
+        )
+        
+        obs = next_obs
+        if terminated or truncated:
+            break
+            
+    return metrics, info
 
 @gin.configurable
-def train_agent(
-    seed: int,
-    training_loops: int = 600,
-    n_steps: int = 500,
-    step_size: float = 0.1,
-    initial_value: float = 0.0,
-    discount: float = 0.9,
-    max_horizon: int = 5,
-    tau: float = 1.0,
-    environment_id: str = "GoRight-v0",
-    obs_shape: Tuple[int, int, int, int] = (11, 3, 2, 2),
-    status_intensities: List[int] = [0, 5, 10],
-    model_type: str = "expectation",
-    uncertainty_type: str = "unselective",
-    project: str = "BBI",
-    notes: str = "",
-    group_name: str = "default",
-) -> None:
-    """Trains a Q-Learning agent using the provided seed and configuration.
+def train_agent(config: TrainingConfig) -> None:
+    """Train agent with given configuration."""
+    run = setup_wandb(config)
 
-    Args:
-        seed (int): _description_
-        training_loops (int, optional): _description_. Defaults to 600.
-        n_steps (int, optional): _description_. Defaults to 500.
-        step_size (float, optional): _description_. Defaults to 0.1.
-        initial_value (float, optional): _description_. Defaults to 0.0.
-        discount (float, optional): _description_. Defaults to 0.9.
-        max_horizon (int, optional): _description_. Defaults to 5.
-        tau (float, optional): _description_. Defaults to 1.0.
-        environment_id (str, optional): _description_. Defaults to "GoRight-v0".
-        obs_shape (Tuple[int, int, int, int], optional): _description_. Defaults to (11, 3, 2, 2).
-        status_intensities (List[int], optional): _description_. Defaults to [0, 5, 10].
-        model_type (str, optional): _description_. Defaults to "expectation".
-        uncertainty_type (str, optional): _description_. Defaults to "unselective".
-        project (str, optional): _description_. Defaults to "BBI".
-        notes (str, optional): _description_. Defaults to "".
-        group_name (str, optional): _description_. Defaults to "".
-
-    Raises:
-        ValueError: _description_
-
-    Returns:
-        _type_: _description_
-    """
     try:
-        wandb.init(
-            project=project,
-            name=f"{group_name}_seed_{seed}",
-            config={
-                "seed": seed,
-                "training_loops": training_loops,
-                "n_steps": n_steps,
-                "step_size": step_size,
-                "initial_value": initial_value,
-                "discount": discount,
-                "max_horizon": max_horizon,
-                "tau": tau,
-                "environment_id": environment_id,
-                "obs_shape": obs_shape,
-                "model_type": model_type,
-                "uncertainty_type": uncertainty_type,
-            },
-            reinit=True,
-            notes=notes,
-            group=group_name,
-
-            dir=f"./wandb_{group_name}_seed_{seed}",
-            id=f"{group_name}_seed_{seed}_{generate_id()}",
-        )
-
-        env = gym.make(id=environment_id)
-
+        logger.info("starting_training")
+        
+        env = gym.make(id=config.environment_id)
         agent = BoundingBoxPlanningAgent(
-            state_shape=obs_shape,
+            state_shape=config.obs_shape,
             num_actions=2,
-            step_size=step_size,
-            discount_rate=discount,
+            step_size=config.step_size,
+            discount_rate=config.discount,
             epsilon=1.0,
-            horizon=max_horizon,
-            initial_value=initial_value,
-            seed=seed,
-            uncertainty_type=uncertainty_type,
+            horizon=config.max_horizon,
+            initial_value=config.initial_value,
+            seed=config.seed,
+            uncertainty_type=config.uncertainty_type,
         )
-
-        model_cls = {
-            "expectation": ExpectationModel,
-            "sampling": SamplingModel,
-            "perfect": PerfectModel,
-            "none": ModelBase
-        }
-
-        if model_type not in model_cls.keys():
-            raise ValueError(
-                f"model_type must be one of: {model_cls.keys()}. Got: {model_type}"
-            )
-
-        model = model_cls[model_type](
-            num_prize_indicators=len(obs_shape[2:]),
-            env_length=obs_shape[0],
-            status_intensities=status_intensities,
-            seed=int(seed),
+        
+        if config.model_type not in MODEL_CLS:
+            raise ValueError(f"model_type must be one of: {MODEL_CLS.keys()}. Got: {config.model_type}")
+            
+        model = MODEL_CLS[config.model_type](
+            num_prize_indicators=len(config.obs_shape[2:]),
+            env_length=config.obs_shape[0],
+            status_intensities=config.status_intensities,
+            seed=config.seed,
         )
         model.reset()
-        prev_status = None  # only used when model_type == perfect
-
-        logger.info(f"Starting training for seed {seed}")
-
-        for training_step in range(training_loops):
-            episode_seed = int((seed * 10_000) + training_step)
-            obs, info = env.reset(seed=episode_seed)
-
-            # Training episode
-            train_total_reward = 0.0
-            agent.epsilon = 1.0
-            for step in range(n_steps):
-                logger.debug(
-                    "======================================\n"
-                )
-                logger.debug(
-                    f"Starting - Training step {training_step}, inner step {step}, global step {training_step*500+step}: "
-                )
-                action = agent.act(obs)
-                next_obs, reward, terminated, truncated, info = env.step(action)
-
-                if model_type == "perfect":
-                    env_unwrapped = env.unwrapped
-                    if not (isinstance(env_unwrapped, ModelBase) or isinstance(env_unwrapped, goright.env.GoRight)):
-                        raise ValueError(
-                            f"Environment must inherit ModelBase. Got: {type(env_unwrapped)}"
-                        )
-                    env_state = env_unwrapped.state.get_state()
-                    prev_status = env_state[1]
-
-                td_error = agent.update(
-                    obs=obs,
-                    action=action,
-                    next_obs=next_obs,
-                    reward=float(reward),
-                    model=model,
-                    prev_status=prev_status,
-                )
-
-                logger.debug(
-                    f"Summary: obs={obs} action={action}, next_obs={next_obs}, reward={reward}, TD error={td_error}"
-                )
-
-                obs = next_obs
-                train_total_reward += float(reward)
-
-                if terminated or truncated:
-                    break
-
-            # Evaluation episode
-            obs, info = env.reset(seed=episode_seed + 1_000)
-            discounted_return = 0.0
-            eval_total_reward = 0.0
-            agent.epsilon = 0.0
-            for step in range(n_steps):
-                action = agent.act(obs)
-                next_obs, reward, terminated, truncated, info = env.step(action)
-                obs = next_obs
-                discounted_return += discount**step * float(reward)
-                eval_total_reward += float(reward)
-
-                wandb.log(
-                    {
-                        "evaluation/discounted_return": discounted_return,
-                        "evaluation/discounted_reward": discount**step * float(reward),
-                        "evaluation/reward": reward,
-                        "eval_step": step + n_steps * training_step,
-                    },
-                    # step = step + n_steps * training_step,
-                    # commit = False
-                )
-
-                if terminated or truncated:
-                    break
-
-            wandb.log(
-                {
-                    "train/total_train_reward": train_total_reward,
-                    "train/average_td_error": (
-                        np.mean(agent.td_errors) if agent.td_errors else 0
-                    ),
-                    "train/total_evaluation_reward": eval_total_reward,
-                    "train/total_evaluation_discounted_return": discounted_return,
-                    "train_step": training_step,
-                },
-                # step = training_step,
-                # commit = True
+        
+        for episode in range(config.n_episodes):
+            episode_seed = int((config.seed * 10_000) + episode)
+            
+            train_metrics, _ = run_episode(
+                env=env,
+                agent=agent,
+                model=model,
+                config=config,
+                episode_seed=episode_seed,
+                training=True
             )
-
-            logger.debug(f"Training step {training_step}: Train reward={train_total_reward}, Eval reward={eval_total_reward}")
-
-        # Save Q-values
-        q_values_filename = f"q_values_seed_{seed}.npz"
-        np.savez_compressed(q_values_filename, q_values=agent.Q)
-        artifact = wandb.Artifact(f"q_values_seed_{seed}", type="model")
-        artifact.add_file(q_values_filename)
-        wandb.log_artifact(artifact)
-        os.remove(q_values_filename)
-        wandb.finish()
-
-        logger.info(f"Training completed for seed {seed}")
-
+            
+            eval_metrics, _ = run_episode(
+                env=env,
+                agent=agent,
+                model=model,
+                config=config,
+                episode_seed=episode_seed + 1_000,
+                training=False
+            )
+            
+            metrics = {
+                **train_metrics.to_dict(prefix="train/"),
+                **eval_metrics.to_dict(prefix="eval/"),
+                "q_values": agent.Q,
+                "episode": episode,
+                "env_step": episode*config.n_steps
+            }
+            
+            wandb.log(metrics, step=episode)
+            logger.info("episode_completed", f"Episode: {episode}")
+            
+        logger.info("training_completed")
+        run.finish()
+        
     except Exception as e:
-        error_message = (
-            f"Exception in process with seed {seed}: {str(e)}\n{traceback.format_exc()}"
+        logger.error(
+            "training_failed",
+            error=str(e),
+            traceback=traceback.format_exc()
         )
-        logger.error(error_message)
+        raise
 
+def run_seeds(
+    n_seeds: int = 100,
+    start_seed: int = 0,
+    config_file: str = "bbi/config/goright_bbi.gin",
+    max_workers: Optional[int] = None
+) -> None:
+    """Run training across multiple seeds using process pool."""
+    if max_workers is None:
+        max_workers = mp.cpu_count()
+    
+    logger.info("starting_multiprocess_training", max_workers=max_workers)
 
-def train_agent_wrapper(seed: int, config_file: str):
-    """_summary_.
-
-    Args:
-        seed (int): _description_
-        config_file (str): _description_
-    """
     gin.parse_config_file(config_file)
-    train_agent(seed)
-
-
-def run_seeds(n_seeds: int = 100, start_seed: int = 0, config_file: str = "bbi/config/goright_bbi.gin") -> None:
-    """Main function to initiate training across multiple seeds.
-
-    Args:
-        n_seeds (int, optional): _description_. Defaults to 100.
-        start_seed (int, optional): _description_. Defaults to 0.
-        config_file (str, optional): _description_. Defaults to "bbi/config/goright_bbi.gin".
-    """
-    seeds = np.arange(start_seed, start_seed + n_seeds)
-    processes = []
-
-    for seed in seeds:
-        # train_agent_wrapper(seed=int(seed), config_file=config_file)
-        p = Process(
-            target=train_agent_wrapper,
-            args=(seed, config_file),
-        )
-        processes.append(p)
-        p.start()
-
-    for p in processes:
-        p.join()
-
+    base_config = TrainingConfig(
+        seed=0,
+    )
+    
+    configs = [
+        TrainingConfig(**{**base_config.to_dict(), "seed": seed})
+        for seed in range(start_seed, start_seed + n_seeds)
+    ]
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        future_to_seed = {
+            executor.submit(train_agent, config): config.seed 
+            for config in configs
+        }
+        
+        for future in as_completed(future_to_seed):
+            seed = future_to_seed[future]
+            future.result()
+            logger.info("seed_training_completed", seed=seed)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Train learning agent with GoRight environment."
-    )
-    parser.add_argument(
-        "--config_file",
-        type=str,
-        default="goright_bbi",
-        help="Path to the config gin file",
-    )
-    parser.add_argument(
-        "--n_seeds",
-        type=int,
-        default=1,
-        help="Number of seeds to run",
-    )
-    parser.add_argument(
-        "--start_seed",
-        type=int,
-        default=99,
-        help="Initial seed",
-    )
-
-    parser.add_argument(
-        "--debug",
-        type=bool,
-        default=False,
-        help="Flag to log updates",
-    )
-
+    parser = argparse.ArgumentParser(description="Train learning agent with GoRight environment.")
+    parser.add_argument("--config_file", type=str, default="goright_bbi", help="Path to the config gin file")
+    parser.add_argument("--n_seeds", type=int, default=5, help="Number of seeds to run")
+    parser.add_argument("--start_seed", type=int, default=100, help="Initial seed")
+    parser.add_argument("--max_workers", type=int, default=None, help="Maximum number of parallel workers")
+    
     args = parser.parse_args()
-
-    logging.basicConfig(
-        level=logging.DEBUG,# if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        handlers=[
-            # logging.StreamHandler(),
-            logging.FileHandler(f"training_{args.config_file}.log", mode="w")
-        ]
+    
+    run_seeds(
+        n_seeds=args.n_seeds,
+        start_seed=args.start_seed,
+        config_file=f"bbi/config/{args.config_file}.gin",
+        max_workers=args.max_workers
     )
-
-    run_seeds(n_seeds=args.n_seeds, start_seed=args.start_seed, config_file=f"bbi/config/{args.config_file}.gin")
