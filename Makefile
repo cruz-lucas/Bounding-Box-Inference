@@ -27,7 +27,7 @@ sampling-2:
 	python train.py --config_file="goright_sampling_h2" --n_seeds=40 --start_seed=10
 
 sampling-5:
-	python train.py --config_file="goright_sampling_h5" --n_seeds=1 --start_seed=99
+	python train.py --config_file="goright_sampling_h5" --n_seeds=10 --start_seed=0
 
 bounding-box:
 	python train.py --config_file="goright_bbi" --n_seeds=50 --start_seed=0
