@@ -26,6 +26,7 @@ class TrainingConfig:
     experiment_name: str = "BBI_Training"
     run_group: str = "default"
     notes: str = ""
+    debug: bool = False
     
     def to_dict(self) -> Dict:
         """Convert config to dictionary."""
@@ -36,14 +37,12 @@ class EpisodeMetrics:
     """Metrics collected during a training/evaluation episode."""
     total_reward: float = 0.0
     discounted_return: float = 0.0
-    episode_length: int = 0
     td_errors: List[float] = field(default_factory=list)
     
     def update(self, reward: float, discount: float, step: int, td_error: Optional[float] = None):
         """Update metrics with new step information."""
         self.total_reward += reward
-        self.discounted_return += discount ** step * reward
-        self.episode_length += 1
+        self.discounted_return += (discount ** step) * reward
         if td_error is not None:
             self.td_errors.append(td_error)
     
@@ -52,20 +51,27 @@ class EpisodeMetrics:
         metrics = {
             "total_reward": self.total_reward,
             "discounted_return": self.discounted_return,
-            "episode_length": self.episode_length,
         }
         if self.td_errors:
             metrics["avg_td_error"] = np.mean(self.td_errors)
             metrics["max_td_error"] = np.max(self.td_errors)
             
         return {f"{prefix}{k}": v for k, v in metrics.items()}
+    
+    def step_metrics_to_dict(self, prefix: str = "") -> Dict:
+        metrics = {
+            "total_reward": self.total_reward,
+            "discounted_return": self.discounted_return,
+        }
+
+        return metrics
 
 
 def setup_wandb(config: TrainingConfig) -> str:
     """Setup wandn experiment and start run."""
     run = wandb.init(
         project=config.experiment_name,
-        name=f"{config.experiment_name}_seed_{config.seed}",
+        name=f"{config.run_group}_seed_{config.seed}",
         config=config.to_dict(),
         reinit=True,
         group=config.run_group,

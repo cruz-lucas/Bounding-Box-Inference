@@ -6,7 +6,9 @@ import multiprocessing as mp
 import traceback
 from typing import Dict, Optional, Tuple
 
+from torch.utils.tensorboard import SummaryWriter
 import wandb
+import numpy as np
 import gin
 import goright.env
 import gymnasium as gym
@@ -32,7 +34,7 @@ logging.basicConfig(
     format="%(message)s",
     # stream=sys.stdout,
     level=logging.DEBUG,
-    filename='training_output.log'
+    filename='output.log'
 )
 
 structlog.configure(
@@ -46,7 +48,7 @@ structlog.configure(
     ],
     logger_factory=LoggerFactory(),
     wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
+    # cache_logger_on_first_use=True,
 )
 
 logger = get_logger()
@@ -63,11 +65,11 @@ def run_episode(
     metrics = EpisodeMetrics()
     obs, info = env.reset(seed=episode_seed)
     
-    agent.epsilon = 1.0 if training else 0.0
     prev_status = None
+    epsilon = 1.0 if training else 0.0
     
     for step in range(config.n_steps):
-        action = agent.act(obs)
+        action = agent.act(obs, epsilon)
         next_obs, reward, terminated, truncated, info = env.step(action)
         
         if training:
@@ -106,6 +108,9 @@ def run_episode(
 def train_agent(config: TrainingConfig) -> None:
     """Train agent with given configuration."""
     run = setup_wandb(config)
+    writer = SummaryWriter(log_dir=f'logs/{config.run_group}/seed_{config.seed}')
+
+    rng = np.random.default_rng(seed=config.seed)
 
     try:
         logger.info("starting_training")
@@ -119,7 +124,7 @@ def train_agent(config: TrainingConfig) -> None:
             epsilon=1.0,
             horizon=config.max_horizon,
             initial_value=config.initial_value,
-            seed=config.seed,
+            seed=int(rng.integers(0, 1e10)),
             uncertainty_type=config.uncertainty_type,
         )
         
@@ -130,19 +135,17 @@ def train_agent(config: TrainingConfig) -> None:
             num_prize_indicators=len(config.obs_shape[2:]),
             env_length=config.obs_shape[0],
             status_intensities=config.status_intensities,
-            seed=config.seed,
+            seed=int(rng.integers(0, 1e10)),
         )
         model.reset()
         
         for episode in range(config.n_episodes):
-            episode_seed = int((config.seed * 10_000) + episode)
-            
             train_metrics, _ = run_episode(
                 env=env,
                 agent=agent,
                 model=model,
                 config=config,
-                episode_seed=episode_seed,
+                episode_seed=int(rng.integers(0, 1e10)),
                 training=True
             )
             
@@ -151,20 +154,62 @@ def train_agent(config: TrainingConfig) -> None:
                 agent=agent,
                 model=model,
                 config=config,
-                episode_seed=episode_seed + 1_000,
+                episode_seed=int(rng.integers(0, 1e10)),
                 training=False
             )
             
             metrics = {
                 **train_metrics.to_dict(prefix="train/"),
-                **eval_metrics.to_dict(prefix="eval/"),
-                "q_values": agent.Q,
-                "episode": episode,
-                "env_step": episode*config.n_steps
+                **eval_metrics.to_dict(prefix="evaluation/"),
+                # "q_values": agent.Q,
+                "episode": episode+1,
+                "env_step": (episode+1) * config.n_steps
             }
+
+            writer.add_scalars(
+                'train',
+                train_metrics.to_dict(),
+                (episode+1) * config.n_steps,
+            )
+            writer.add_scalars(
+                'eval',
+                eval_metrics.to_dict(),
+                (episode+1) * config.n_steps,
+            )
+
+            if config.debug:
+                for dim1 in range(3):
+                    for dim2 in range(2):
+                        for dim3 in range(2):
+                            slice_2d = agent.Q[:, dim1, dim2, dim3, :]
+                            
+                            max_value = 30
+                            norm_img = (slice_2d + max_value) / (2*max_value)
+
+                            writer.add_image(
+                                f"q_values/status_{dim1}_prize1_{dim2}_prize2_{dim3}",
+                                norm_img,
+                                global_step=(episode+1) * config.n_steps,
+                                dataformats='WH',
+
+                            )
+                            
+                            # plt.close(fig)
             
-            wandb.log(metrics, step=episode)
+            wandb.log(metrics, step=(episode+1) * config.n_steps)
+            # q_values_filename = "q_values.npz"
+            # np.savez_compressed(q_values_filename, q_values=agent.Q)
+            # artifact = wandb.Artifact("q_values", type="model")
+            # artifact.add_file(q_values_filename)
+            # wandb.log_artifact(artifact)
+            # os.remove(q_values_filename)
             logger.info("episode_completed", f"Episode: {episode}")
+
+        writer.add_hparams(
+            config.to_dict(),
+            eval_metrics.to_dict(),
+            run_name=f"{config.run_group}_seed_{config.seed}",
+        )
             
         logger.info("training_completed")
         run.finish()
@@ -199,6 +244,8 @@ def run_seeds(
         for seed in range(start_seed, start_seed + n_seeds)
     ]
     
+    # for config in configs:
+    #     train_agent(config)
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_seed = {
             executor.submit(train_agent, config): config.seed 
@@ -212,9 +259,9 @@ def run_seeds(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train learning agent with GoRight environment.")
-    parser.add_argument("--config_file", type=str, default="goright_bbi", help="Path to the config gin file")
-    parser.add_argument("--n_seeds", type=int, default=5, help="Number of seeds to run")
-    parser.add_argument("--start_seed", type=int, default=100, help="Initial seed")
+    parser.add_argument("--config_file", type=str, default="goright_perfect", help="Path to the config gin file")
+    parser.add_argument("--n_seeds", type=int, default=10, help="Number of seeds to run")
+    parser.add_argument("--start_seed", type=int, default=0, help="Initial seed")
     parser.add_argument("--max_workers", type=int, default=None, help="Maximum number of parallel workers")
     
     args = parser.parse_args()

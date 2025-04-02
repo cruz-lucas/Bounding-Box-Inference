@@ -12,6 +12,6 @@ TrainingConfig.uncertainty_type    = "unselective"
 TrainingConfig.obs_shape           = (11,3,2,2)
 TrainingConfig.status_intensities  = [0,5,10]
 
-TrainingConfig.experiment_name     = "bbi_experiments"
+TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "GoRight environment with the perfect model and h=5"
 TrainingConfig.run_group           = "goright_perfect"

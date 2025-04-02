@@ -30,7 +30,7 @@ sampling-5:
 	python train.py --config_file="goright_sampling_h5" --n_seeds=10 --start_seed=0
 
 bounding-box:
-	python train.py --config_file="goright_bbi" --n_seeds=50 --start_seed=0
+	python train.py --config_file="goright_bbi" --n_seeds=1 --start_seed=99
 
 linear-bbi:
 	python train.py --config_file="goright_bbi_linear" --n_seeds=50 --start_seed=0

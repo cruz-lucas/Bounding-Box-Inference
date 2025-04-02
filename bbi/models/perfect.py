@@ -92,7 +92,6 @@ class PerfectModel(ModelBase):
             current_status_indicator=status,
             prize_indicators=np.array(prize),
         )
-
         _, exp_reward, _, _, _ = self.step(action)
         state = self.state.get_state()
         exp_obs = state[self.state.mask]

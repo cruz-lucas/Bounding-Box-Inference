@@ -29,6 +29,7 @@ dependencies = [
     "gin-config>=0.5.0",
     "colour>=0.1.5",
     "structlog>=25.1.0",
+    "tensorboard>=2.19.0",
 ]
 
 [project.urls]

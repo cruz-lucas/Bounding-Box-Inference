@@ -153,6 +153,7 @@ class BoundingBoxPlanningAgent:
         target_real = reward + gamma * np.max(self.Q[s_prime])
         targets = [target_real]
         uncertainties = [0.0]
+        disc_reward = reward
 
         logger.debug(f"Real transition: s={s}, action={action}, s'={s_prime}, reward={reward}, q(s)={self.Q[s]}, q(s')={self.Q[s_prime]}")
         logger.debug(f"1-step TD target: {target_real}")
@@ -184,7 +185,9 @@ class BoundingBoxPlanningAgent:
                     up_state,
                     up_reward,
                 ) = prediction
+
                 state_bb = (low_state, up_state)
+
                 logger.debug(
                     f"Planning step {h}: pred_state={pred_state}, pred_reward={pred_reward}, q(pred_state)={self.Q[pred_state]}, "
                     f"low_state={low_state}, low_reward={low_reward}, "
@@ -241,8 +244,10 @@ class BoundingBoxPlanningAgent:
                         )
                     (pred_state, pred_reward) = prediction
 
+                disc_reward += gamma * pred_reward
+                gamma *= self.discount_rate
                 q_pred = np.max(self.Q[pred_state])
-                target_pred = pred_reward + gamma * q_pred
+                target_pred = disc_reward + gamma * q_pred
 
                 uncertainty = 0
 
