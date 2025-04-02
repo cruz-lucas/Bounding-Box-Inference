@@ -15,3 +15,6 @@ TrainingConfig.status_intensities  = [0,5,10]
 TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "GoRight environment with the perfect model and h=5"
 TrainingConfig.run_group           = "goright_perfect"
+
+run_seeds.n_seeds = 100
+run_seeds.start_seed = 0

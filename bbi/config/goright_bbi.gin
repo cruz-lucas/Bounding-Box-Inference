@@ -12,6 +12,9 @@ TrainingConfig.uncertainty_type    = "bbi"
 TrainingConfig.obs_shape           = (11,3,2,2)
 TrainingConfig.status_intensities  = [0,5,10]
 
-TrainingConfig.experiment_name     = "bbi_experiments"
+TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "BBI with GoRight environment"
 TrainingConfig.run_group           = "goright_bbi"
+
+run_seeds.n_seeds = 100
+run_seeds.start_seed = 0

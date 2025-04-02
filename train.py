@@ -4,6 +4,7 @@ import argparse
 import logging
 import multiprocessing as mp
 import traceback
+import gin
 from typing import Dict, Optional, Tuple
 
 from torch.utils.tensorboard import SummaryWriter
@@ -205,11 +206,11 @@ def train_agent(config: TrainingConfig) -> None:
             # os.remove(q_values_filename)
             logger.info("episode_completed", f"Episode: {episode}")
 
-        writer.add_hparams(
-            config.to_dict(),
-            eval_metrics.to_dict(),
-            run_name=f"{config.run_group}_seed_{config.seed}",
-        )
+        # writer.add_hparams(
+        #     config.to_dict(),
+        #     eval_metrics.to_dict(),
+        #     run_name=f"{config.run_group}_seed_{config.seed}",
+        # )
             
         logger.info("training_completed")
         run.finish()
@@ -222,10 +223,12 @@ def train_agent(config: TrainingConfig) -> None:
         )
         raise
 
+
+@gin.configurable
 def run_seeds(
-    n_seeds: int = 100,
-    start_seed: int = 0,
-    config_file: str = "bbi/config/goright_bbi.gin",
+    base_config: TrainingConfig,
+    n_seeds: int,
+    start_seed: int,
     max_workers: Optional[int] = None
 ) -> None:
     """Run training across multiple seeds using process pool."""
@@ -233,11 +236,6 @@ def run_seeds(
         max_workers = mp.cpu_count()
     
     logger.info("starting_multiprocess_training", max_workers=max_workers)
-
-    gin.parse_config_file(config_file)
-    base_config = TrainingConfig(
-        seed=0,
-    )
     
     configs = [
         TrainingConfig(**{**base_config.to_dict(), "seed": seed})
@@ -259,16 +257,16 @@ def run_seeds(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train learning agent with GoRight environment.")
-    parser.add_argument("--config_file", type=str, default="goright_perfect", help="Path to the config gin file")
-    parser.add_argument("--n_seeds", type=int, default=10, help="Number of seeds to run")
-    parser.add_argument("--start_seed", type=int, default=0, help="Initial seed")
+    parser.add_argument("--config_file", type=str, default="goright_expected_h5", help="Path to the config gin file")
     parser.add_argument("--max_workers", type=int, default=None, help="Maximum number of parallel workers")
     
     args = parser.parse_args()
+    gin.parse_config_file(f"bbi/config/{args.config_file}.gin")
+    base_config = TrainingConfig(
+        seed=0,
+    )
     
     run_seeds(
-        n_seeds=args.n_seeds,
-        start_seed=args.start_seed,
-        config_file=f"bbi/config/{args.config_file}.gin",
+        base_config=base_config,
         max_workers=args.max_workers
     )
