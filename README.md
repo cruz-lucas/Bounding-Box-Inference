@@ -9,7 +9,7 @@ This repository contains the implementation and replication code for the paper:
 > **Talvitie et al. (2024). Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning.**
 > *Reinforcement Learning Journal, vol. 5, 2024, pp. 2440–2460.*
 
-The code implements a selective planning method that uses bounding‐box inference to mitigate model errors in model‐based reinforcement learning (MBRL). In our experiments, we evaluate our approach on the [GoRight environment](https://github.com/cruz-lucas/goright) (see below), comparing variants such as Q-learning, Perfect, Expectation, Sampling, and different bounding-box inference (BBI) configurations (linear, tree, and neural).
+The code implements a selective planning method that uses bounding‐box inference to mitigate catastrophic planning in model‐based reinforcement learning (MBRL). In our experiments, we evaluate our approach on the [GoRight environment](https://github.com/cruz-lucas/goright) (see below), comparing variants such as Q-learning, Perfect, Expectation, Sampling, and different bounding-box inference (BBI) configurations (linear, tree, and neural).
 
 
 
@@ -22,7 +22,6 @@ This repository replicates the experimental results from the paper by integratin
 
 The repository includes:
 - **`train.py`** – The main training script, configurable via [gin-config](https://github.com/google/gin-config).
-- **`Makefile`** – A set of commands for running various experiments (e.g., Q-learning, perfect model, expectation model with different horizons, sampling, and various BBI configurations).
 - **`bbi/agent.py`** – The implementation of the learning agent with bounding-box inference.
 - **`bbi/models/`** – Different model implementations (Expectation, Sampling, Perfect, and a base Model).
 
@@ -67,23 +66,11 @@ uv pip install .
 The primary training script is `train.py`. You can run it directly via:
 
 ```bash
-python train.py --config_file="bbi/config/goright_bbi.gin" --n_seeds=100 --start_seed=0
+python train.py --config_file="goright_bbi"
 ```
 
 The following command-line arguments are available:
 - `--config_file`: Path (without extension) to the gin configuration file (located in `bbi/config/`).
-- `--n_seeds`: Number of independent training seeds to run.
-- `--start_seed`: Initial seed value.
-
-### Using the Makefile
-
-A sample Makefile is provided to run various experimental setups. For example:
-
-- **Q-Learning Baseline:**
-
-  ```bash
-  make q-learning
-  ```
 
 ## The GoRight Environment
 
