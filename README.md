@@ -1,7 +1,3 @@
-Below is an example README for your repository:
-
-
-
 # Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning
 
 This repository contains the implementation and replication code for the paper:
@@ -10,7 +6,6 @@ This repository contains the implementation and replication code for the paper:
 > *Reinforcement Learning Journal, vol. 5, 2024, pp. 2440–2460.*
 
 The code implements a selective planning method that uses bounding‐box inference to mitigate catastrophic planning in model‐based reinforcement learning (MBRL). In our experiments, we evaluate our approach on the [GoRight environment](https://github.com/cruz-lucas/goright) (see below), comparing variants such as Q-learning, Perfect, Expectation, Sampling, and different bounding-box inference (BBI) configurations (linear, tree, and neural).
-
 
 
 ## Overview
