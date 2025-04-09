@@ -9,14 +9,14 @@ TrainingConfig.tau                 = 1.0
 TrainingConfig.environment_id      = "GoRight-v0"
 TrainingConfig.model_type          = "none"
 TrainingConfig.uncertainty_type    = "none"
-TrainingConfig.obs_shape           = (11,3,2,2)
-TrainingConfig.show_status_ind     = True
+TrainingConfig.obs_shape           = (11,2,2)
+TrainingConfig.show_status_ind     = False
 TrainingConfig.show_prev_status_ind= False
 TrainingConfig.status_intensities  = [0,5,10]
 
 TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "GoRight environment with Q-learning"
-TrainingConfig.run_group           = "goright_qlearning"
+TrainingConfig.run_group           = "goright_qlearning_wo_status"
 
-run_seeds.n_seeds = 40
-run_seeds.start_seed = 10
+run_seeds.n_seeds = 50
+run_seeds.start_seed = 0
