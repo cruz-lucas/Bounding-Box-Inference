@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from bbi.models import PerfectModel
-from bbi.models.model_base import ModelBase, ObsType
+from bbi.models.model_base import ModelBase
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class BoundingBoxPlanningAgent:
 
         self.td_errors = []
 
-    def act(self, obs: ObsType | Tuple[int, ...], eps: float | None = None) -> int:
+    def act(self, obs: Dict[str, np.ndarray] | Tuple[int, ...], eps: float | None = None) -> int:
         """Select an action using an epsilon–greedy strategy based on Q–values.
 
         Args:
@@ -175,18 +175,17 @@ class BoundingBoxPlanningAgent:
                     action_bb=action_bb,
                     prev_status=None,
                 )
-                if len(prediction) != 6:
+                if prediction.lower_obs is None or prediction.upper_obs is None:
                     raise ValueError(
-                        f"Prediction must have len 6 with BBI planning. Got: {len(prediction)}"
+                        f"Prediction must have lower and upper observations with BBI planning. Got: {prediction}"
                     )
-                (
-                    pred_state,
-                    pred_reward,
-                    low_state,
-                    low_reward,
-                    up_state,
-                    up_reward,
-                ) = prediction
+
+                pred_state = prediction.obs
+                pred_reward = prediction.reward
+                low_state = prediction.lower_obs
+                low_reward = prediction.lower_reward
+                up_state = prediction.upper_obs
+                up_reward = prediction.upper_reward
 
                 state_bb = (low_state, up_state)
 
@@ -216,39 +215,22 @@ class BoundingBoxPlanningAgent:
             elif self.uncertainty_type == "unselective":
                 if isinstance(model, PerfectModel):
                     if prev_status is None:
-                        raise ValueError("Planning with perfect model must receive the previous status.")
-
-                    prediction = model.predict(
-                        obs=pred_state,
-                        action=planning_action,
-                        state_bb=None,
-                        action_bb=None,
-                        prev_status=prev_status,
-                    )
-
-                    if len(prediction) != 3:
-                        raise ValueError(
-                            f"Prediction must have len 3 with unselective planning with perfect model. Got: {len(prediction)}"
-                    )
-                    (pred_state, pred_reward, prev_status) = prediction
-
+                        raise ValueError(f"Planning with perfect model must receive the previous status. Got: {prev_status}")
                 else:
                     if prev_status is not None:
-                        raise ValueError(f"Planning with any other model rather than the perfect model must NOT receive the previous status. Got: {prev_status}. Expected: None") 
+                        raise ValueError(f"Planning with any other model rather than the perfect model must NOT receive the previous status. Got: {prev_status}. Expected: None")
 
-                    prediction = model.predict(
-                        obs=pred_state,
-                        action=planning_action,
-                        state_bb=None,
-                        action_bb=None,
-                        prev_status=None,
-                    )
-                    
-                    if len(prediction) != 2:
-                        raise ValueError(
-                            f"Prediction must have len 2 with unselective planning. Got: {len(prediction)}"
-                        )
-                    (pred_state, pred_reward) = prediction
+                prediction = model.predict(
+                    obs=pred_state,
+                    action=planning_action,
+                    state_bb=None,
+                    action_bb=None,
+                    prev_status=prev_status,  # None if not using the perfect model
+                )
+
+                pred_state = prediction.reward
+                pred_reward = prediction.reward
+                prev_status = prediction.prev_status  # None if not using the perfect model
 
                 disc_reward += gamma * pred_reward
                 gamma *= self.discount_rate
@@ -325,7 +307,7 @@ class BoundingBoxPlanningAgent:
         action_bb = list(set(low_actions + up_actions))
         return (q_low, q_up, action_bb)
 
-    def _round_obs(self, obs: ObsType) -> Tuple[int, ...]:
+    def _round_obs(self, obs: Dict[str, np.ndarray]) -> Tuple[int, ...]:
         """Convert a continuous observation into a discrete (tabular) state.
 
         The conversion is performed as follows:
@@ -343,13 +325,6 @@ class BoundingBoxPlanningAgent:
             A tuple representing the discrete state.
         """
         pos = int(np.round(obs["position"]).item())
-        status_val = float(obs["status_indicator"].item())
-        if status_val <= 2.5:
-            intensity_value = 0
-        elif status_val <= 7.5:
-            intensity_value = 1
-        else:
-            intensity_value = 2
 
         prize_indicators = obs["prize_indicators"]
         if not isinstance(prize_indicators, Iterable):
@@ -360,4 +335,15 @@ class BoundingBoxPlanningAgent:
         prize_indicators = [
             int(prize_indicators[i] >= 0.5) for i in range(len(prize_indicators))
         ]
-        return (pos, intensity_value, *prize_indicators)
+
+        if "status_indicator" in obs.keys():
+            status_val = float(obs["status_indicator"].item())
+            if status_val <= 2.5:
+                intensity_value = 0
+            elif status_val <= 7.5:
+                intensity_value = 1
+            else:
+                intensity_value = 2
+
+            return (pos, intensity_value, *prize_indicators)
+        return (pos, *prize_indicators)

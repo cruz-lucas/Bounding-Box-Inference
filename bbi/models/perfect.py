@@ -5,14 +5,11 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from bbi.models.model_base import ModelBase
+from bbi.utils import Prediction
 
 
 class PerfectModel(ModelBase):
-    """Perfect model class.
-
-    Args:
-        ModelBase (_type_): _description_
-    """
+    """Perfect model class."""
 
     def __init__(
         self,
@@ -21,6 +18,8 @@ class PerfectModel(ModelBase):
         status_intensities: List[int] = [0, 5, 10],
         seed: Optional[int] = None,
         render_mode: Optional[str] = None,
+        show_status_ind: bool = True,
+        show_prev_status_ind: bool = False
     ) -> None:
         """Initializes the GoRight environment.
 
@@ -31,6 +30,8 @@ class PerfectModel(ModelBase):
             has_state_offset (bool): Whether to add noise to observations.
             seed (Optional[int]): Seed for reproducibility.
             render_mode (Optional[int]): Render mode.
+            show_status_ind (bool, optional): Flag to include the current status in the observation. Defaults to True.
+            show_prev_status_ind (bool, optional): Flag to include the previous status in the observation. Defaults to False.
         """
         super().__init__(
             num_prize_indicators=num_prize_indicators,
@@ -39,6 +40,8 @@ class PerfectModel(ModelBase):
             has_state_offset=False,
             seed=seed,
             render_mode=render_mode,
+            show_status_ind=show_status_ind,
+            show_prev_status_ind=show_prev_status_ind
         )
 
     def predict(
@@ -47,10 +50,7 @@ class PerfectModel(ModelBase):
         action: int,
         prev_status: int | None = None,
         **kwargs,
-    ) -> (
-        Tuple[Tuple[int, ...], float]
-        | Tuple[Tuple[int, ...], float, Tuple[int, ...], float, Tuple[int, ...], float]
-    ):
+    ) -> Prediction:
         """Predict the next state and reward given an observation and action, and also compute lower and upper bounds by using the minimum and maximum status intensities, respectively.
 
         This method sets the environment’s state based on the observation,
@@ -67,19 +67,23 @@ class PerfectModel(ModelBase):
             A tuple containing:
             - expected_obs: Expected next observation.
             - expected_reward: Expected reward.
-            - lower_obs: Next observation when the status is forced to the minimum.
-            - lower_reward: Reward for the lower bound.
-            - upper_obs: Next observation when the status is forced to the maximum.
-            - upper_reward: Reward for the upper bound.
+            - previous_status: The current status indicator, used as previous status next time step.
         """
         pos = obs[0]
-        status = obs[1]
-        prize = np.array(obs[2:])
 
-        if status == 1:
-            status = 5
-        elif status == 2:
-            status = 10
+        if self.show_status_ind and self.show_prev_status_ind:
+            status = self.idx_to_status[obs[2]] if obs[2] in self.idx_to_status.keys() else obs[2]
+            prev_status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+
+        elif self.show_status_ind:
+            status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            prev_status = None
+
+        elif self.show_prev_status_ind:
+            prev_status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            status = self._np_random.choice(self.status_intensities)
+
+        prize = np.array(obs[-2:])
 
         if not isinstance(prev_status, int):
             raise ValueError(
@@ -92,18 +96,18 @@ class PerfectModel(ModelBase):
             current_status_indicator=status,
             prize_indicators=np.array(prize),
         )
-        _, exp_reward, _, _, _ = self.step(action)
-        state = self.state.get_state()
-        exp_obs = state[self.state.mask]
-        previous_status = state[~self.state.mask]
+        exp_obs, exp_reward, _, _, _ = self.step(action)
+        previous_status = self.state.previous_status_indicator
 
-        assert len(previous_status) == 1
-        previous_status = int(previous_status[0])
+        if 'prev_status_indicator' in exp_obs.keys():
+            exp_obs['prev_status_indicator'] = self.status_to_idx[exp_obs['prev_status_indicator']]
 
-        exp_obs[1] = np.argwhere(self.status_intensities == exp_obs[1])
-        exp_obs = [int(i) for i in exp_obs]
+        if 'status_indicator' in exp_obs.keys():
+            exp_obs['status_indicator'] = self.status_to_idx[exp_obs['status_indicator']]
 
-        return (tuple(exp_obs), exp_reward, previous_status)
+        exp_obs = [int(val) for val in np.hstack(list(exp_obs.values()))]
+
+        return Prediction(obs=tuple(exp_obs), reward=exp_reward, prev_status=previous_status)
 
     def update(
         self,

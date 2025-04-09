@@ -9,14 +9,14 @@ TrainingConfig.tau                 = 1.0
 TrainingConfig.environment_id      = "GoRight-v0"
 TrainingConfig.model_type          = "expectation"
 TrainingConfig.uncertainty_type    = "bbi"
-TrainingConfig.obs_shape           = (11,3,2,2)
-TrainingConfig.show_status_ind     = True
+TrainingConfig.obs_shape           = (11,2,2)
+TrainingConfig.show_status_ind     = False
 TrainingConfig.show_prev_status_ind= False
 TrainingConfig.status_intensities  = [0,5,10]
 
 TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "BBI with GoRight environment"
-TrainingConfig.run_group           = "goright_bbi"
+TrainingConfig.run_group           = "goright_bbi_wo_status"
 
-run_seeds.n_seeds = 5
-run_seeds.start_seed = 500
+run_seeds.n_seeds = 30
+run_seeds.start_seed = 0
