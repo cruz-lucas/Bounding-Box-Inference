@@ -1,9 +1,9 @@
 [project]
 name = "bbi"
 version = "0.1.0"
-description = 'Replication of results published in "Bounding-Box Inference for Error-Aware ModelBased Reinforcement Learning"'
+description = 'Replication of results published in "Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning"'
 readme = "README.md"
-requires-python = "==3.10.*"
+requires-python = ">=3.10,<3.12"
 license = {text = "MIT License"}
 dependencies = [
     "ipykernel>=6.29.5",
