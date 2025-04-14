@@ -1,9 +1,9 @@
 [project]
 name = "bbi"
 version = "0.1.0"
-description = 'Replication of results published in "Bounding-Box Inference for Error-Aware ModelBased Reinforcement Learning"'
+description = 'Replication of results published in "Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning"'
 readme = "README.md"
-requires-python = "==3.10.*"
+requires-python = ">=3.10,<3.12"
 license = {text = "MIT License"}
 dependencies = [
     "ipykernel>=6.29.5",
@@ -12,7 +12,6 @@ dependencies = [
     "gymnasium[classic-control]>=0.29.1",
     "matplotlib>=3.9.2",
     "wandb==0.18.0",
-    "bbi",
     "isort>=5.13.2",
     "black==22.8.0",
     "protobuf==5.28.3",
@@ -38,9 +37,9 @@ Documentation = "https://readthedocs.org"
 Repository = "https://github.com/me/spam.git"
 
 [tool.uv.sources]
-bbi = { workspace = true }
 agents = { git = "https://github.com/cruz-lucas/minimal_agents.git" }
 goright = { git = "https://github.com/cruz-lucas/goright.git" }
 
-[tool.setuptools]
-packages = ["bbi"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bbi*"]
