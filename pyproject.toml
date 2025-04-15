@@ -21,7 +21,6 @@ dependencies = [
     "build==1.0.3",
     "wheel==0.42.0",
     "torch>=2.5.1",
-    "pyarrow>=18.1.0",
     "pre-commit>=4.0.1",
     "goright[extra]@git+https://github.com/cruz-lucas/goright.git",
     "gin-config>=0.5.0",
