@@ -5,7 +5,7 @@ This repository is my attempt to reproduce the method and results in the paper (
 > **Talvitie et al. (2024). Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning.**
 > *Reinforcement Learning Journal, vol. 5, 2024, pp. 2440–2460.*
 
-The code implements a selective planning method that uses bounding‐box inference to mitigate catastrophic planning in model‐based reinforcement learning (MBRL). In our experiments, we evaluate our approach on the [GoRight environment](https://github.com/cruz-lucas/goright) (see below), comparing variants such as Q-learning, Perfect, Expectation, Sampling, and different bounding-box inference (BBI) configurations (linear, tree, and neural).
+The code implements a selective planning method that uses bounding‐box inference to mitigate catastrophic planning in model‐based reinforcement learning (MBRL). In the experiments, we evaluate the approach on the [GoRight environment](https://github.com/cruz-lucas/goright) (see below), comparing variants such as Q-learning, Perfect, Expectation, Sampling, and different bounding-box inference (BBI) learned models (linear, tree, and neural).
 
 
 ## Overview
@@ -16,11 +16,9 @@ This repository replicates the experimental results from the paper by integratin
 - Combines the multiple (real and simulated) TD targets via a softmin weighting over their uncertainties (computed via bounding-box inference) to update the Q–values.
 
 The repository includes:
-- **`train.py`** – The main training script, configurable via [gin-config](https://github.com/google/gin-config).
-- **`bbi/agent.py`** – The implementation of the learning agent with bounding-box inference.
-- **`bbi/models/`** – Different model implementations (Expectation, Sampling, Perfect, and a base Model).
-
-
+- **`src/train.py`** – The main training script, configurable via [gin-config](https://github.com/google/gin-config).
+- **`src/bbi/agents/agent.py`** – The implementation of the learning agent with bounding-box inference.
+- **`src/bbi/models/`** – Different model implementations (Expectation, Sampling, Perfect, and a base Model).
 
 ## Installation
 
