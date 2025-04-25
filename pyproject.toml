@@ -1,39 +1,47 @@
 [project]
 name = "bbi"
 version = "0.1.0"
-description = 'Replication of results published in "Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning"'
+description = 'Bounding-box inference agent with model-based planning and Q-learning.'
+authors = [{name = "Lucas Cruz", email = "lucas@lucas-cruz.com"}]
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT License"}
 dependencies = [
-    "ipykernel>=6.29.5",
-    "pandas>=2.2.2",
     "numpy>=1.26.4",
     "gymnasium[classic-control]>=0.29.1",
-    "matplotlib>=3.9.2",
-    "wandb==0.18.0",
-    "isort>=5.13.2",
-    "black==22.8.0",
-    "protobuf==5.28.3",
-    "sentry-sdk==2.19.0",
-    "tomli==2.0.1",
-    "setuptools==75.3.0",
-    "build==1.0.3",
-    "wheel==0.42.0",
-    "torch>=2.5.1",
-    "pre-commit>=4.0.1",
     "goright[extra]@git+https://github.com/cruz-lucas/goright.git",
     "gin-config>=0.5.0",
-    "colour>=0.1.5",
     "structlog>=25.1.0",
-    "tensorboard>=2.19.0",
+    "mlflow>=2.22.0",
 ]
 
 [project.urls]
-Homepage = "https://example.com"
-Documentation = "https://readthedocs.org"
-Repository = "https://github.com/me/spam.git"
+Homepage = "https://lucas-cruz.com"
+Documentation = "https://lucas-cruz.com"
+Repository = "https://github.com/cruz-lucas/Bounding-Box-Inference.git"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["bbi*"]
+[tool.uv.pip]
+extra-index-url = []
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=4.0.1",
+    "isort>=5.13.2",
+    "mypy>=1.8.0",
+    "ruff>=0.3.4",
+    "black>=24.3.0"
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+exclude = "mlruns"
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]

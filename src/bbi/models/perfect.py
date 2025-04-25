@@ -19,7 +19,7 @@ class PerfectModel(ModelBase):
         seed: Optional[int] = None,
         render_mode: Optional[str] = None,
         show_status_ind: bool = True,
-        show_prev_status_ind: bool = False
+        show_prev_status_ind: bool = False,
     ) -> None:
         """Initializes the GoRight environment.
 
@@ -41,7 +41,7 @@ class PerfectModel(ModelBase):
             seed=seed,
             render_mode=render_mode,
             show_status_ind=show_status_ind,
-            show_prev_status_ind=show_prev_status_ind
+            show_prev_status_ind=show_prev_status_ind,
         )
 
     def predict(
@@ -73,14 +73,18 @@ class PerfectModel(ModelBase):
 
         if self.show_status_ind and self.show_prev_status_ind:
             status = self.idx_to_status[obs[2]] if obs[2] in self.idx_to_status.keys() else obs[2]
-            prev_status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            prev_status = (
+                self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            )
 
         elif self.show_status_ind:
             status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
             prev_status = None
 
         elif self.show_prev_status_ind:
-            prev_status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            prev_status = (
+                self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            )
             status = self._np_random.choice(self.status_intensities)
 
         prize = np.array(obs[-2:])
@@ -99,11 +103,11 @@ class PerfectModel(ModelBase):
         exp_obs, exp_reward, _, _, _ = self.step(action)
         previous_status = self.state.previous_status_indicator
 
-        if 'prev_status_indicator' in exp_obs.keys():
-            exp_obs['prev_status_indicator'] = self.status_to_idx[exp_obs['prev_status_indicator']]
+        if "prev_status_indicator" in exp_obs.keys():
+            exp_obs["prev_status_indicator"] = self.status_to_idx[exp_obs["prev_status_indicator"]]
 
-        if 'status_indicator' in exp_obs.keys():
-            exp_obs['status_indicator'] = self.status_to_idx[exp_obs['status_indicator']]
+        if "status_indicator" in exp_obs.keys():
+            exp_obs["status_indicator"] = self.status_to_idx[exp_obs["status_indicator"]]
 
         exp_obs = [int(val) for val in np.hstack(list(exp_obs.values()))]
 

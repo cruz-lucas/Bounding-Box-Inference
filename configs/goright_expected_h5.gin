@@ -16,5 +16,5 @@ TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "GoRight environment with unselective planning using the expectation model with h=5"
 TrainingConfig.run_group           = "goright_expectation_h5"
 
-run_seeds.n_seeds = 100
-run_seeds.start_seed = 0
+run_training.n_seeds = 100
+run_training.start_seed = 0

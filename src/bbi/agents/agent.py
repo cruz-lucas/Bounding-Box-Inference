@@ -72,6 +72,7 @@ class BoundingBoxPlanningAgent:
         self.horizon = horizon
         self.uncertainty_type = uncertainty_type
         self.rng = np.random.default_rng(seed)
+        self.debug = False
 
         self.Q = np.full(state_shape + (num_actions,), fill_value=initial_value)
 
@@ -166,7 +167,19 @@ class BoundingBoxPlanningAgent:
         state_bb = (pred_state, pred_state)
         action_bb = [planning_action]
 
-        for h in range(1, self.horizon):
+        if self.debug:
+            model.render_with_bbox(
+                agent_position=s[0],
+                low_position=pred_state[0],
+                high_position=pred_state[0],
+                predicted_position=pred_state[0],
+                mode="human"
+            )
+
+            # Wait for user input to continue
+            input(f"[Planning Step {0}] Press Enter to continue...")
+
+        for h in range(1, self.horizon + 1):
             if self.uncertainty_type == "bbi":
                 prediction = model.predict(
                     obs=pred_state,
@@ -188,6 +201,18 @@ class BoundingBoxPlanningAgent:
                 up_reward = prediction.upper_reward
 
                 state_bb = (low_state, up_state)
+
+                if self.debug:
+                    model.render_with_bbox(
+                        agent_position=s[0],
+                        low_position=low_state[0],
+                        high_position=up_state[0],
+                        predicted_position=pred_state[0],
+                        mode="human"
+                    )
+
+                    # Wait for user input to continue
+                    input(f"[Planning Step {h}] Press Enter to continue...")
 
                 logger.debug(
                     f"Planning step {h}: pred_state={pred_state}, pred_reward={pred_reward}, q(pred_state)={self.Q[pred_state]}, "

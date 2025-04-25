@@ -20,7 +20,7 @@ class SamplingModel(ModelBase):
         seed: Optional[int] = None,
         render_mode: Optional[str] = None,
         show_status_ind: bool = True,
-        show_prev_status_ind: bool = False
+        show_prev_status_ind: bool = False,
     ) -> None:
         """Initializes the GoRight environment.
 
@@ -41,7 +41,7 @@ class SamplingModel(ModelBase):
             seed=seed,
             render_mode=render_mode,
             show_status_ind=show_status_ind,
-            show_prev_status_ind=show_prev_status_ind
+            show_prev_status_ind=show_prev_status_ind,
         )
 
     def reset(
@@ -61,22 +61,24 @@ class SamplingModel(ModelBase):
         obs, info = super().reset(seed=seed)
 
         if self._np_random is None:
-            raise ValueError("_np_random can't be None for the sampling model, please set a seed when resetting.")
+            raise ValueError(
+                "_np_random can't be None for the sampling model, please set a seed when resetting."
+            )
 
         self.state.current_status_indicator = self._compute_next_status()
 
         return obs, info
 
-    def _compute_next_status(
-        self, previous_status: int = 0, current_status: int = 0
-    ) -> int:
+    def _compute_next_status(self, previous_status: int = 0, current_status: int = 0) -> int:
         """Returns the expected next status.
 
         Returns:
             int: Expected next status.
         """
         if self._np_random is None:
-            raise ValueError("_np_random can't be None for the sampling model, please set a seed when resetting.")
+            raise ValueError(
+                "_np_random can't be None for the sampling model, please set a seed when resetting."
+            )
 
         elif isinstance(self._np_random, np.random.Generator):
             return self._np_random.choice(self.status_intensities)
@@ -97,7 +99,9 @@ class SamplingModel(ModelBase):
             np.ndarray: Prize indicators.
         """
         if self._np_random is None:
-            raise ValueError("_np_random can't be None for the sampling model, please set a seed when resetting.")
+            raise ValueError(
+                "_np_random can't be None for the sampling model, please set a seed when resetting."
+            )
 
         prize_indicators = np.array(self.state.prize_indicators)
         if int(next_position) == self.env_length - 1:
@@ -144,14 +148,18 @@ class SamplingModel(ModelBase):
 
         if self.show_status_ind and self.show_prev_status_ind:
             status = self.idx_to_status[obs[2]] if obs[2] in self.idx_to_status.keys() else obs[2]
-            prev_status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            prev_status = (
+                self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            )
 
         elif self.show_status_ind:
             status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
             prev_status = None
 
         elif self.show_prev_status_ind:
-            prev_status = self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            prev_status = (
+                self.idx_to_status[obs[1]] if obs[1] in self.idx_to_status.keys() else obs[1]
+            )
             status = self._np_random.choice(self.status_intensities)
 
         prize = np.array(obs[-2:])
@@ -160,16 +168,17 @@ class SamplingModel(ModelBase):
             position=pos,
             current_status_indicator=status,
             prize_indicators=np.array(prize),
-            previous_status_indicator=prev_status
+            previous_status_indicator=prev_status,
         )
 
-        self._compute_next_status = status = lambda *args, **kwargs: self._np_random.choice(self.status_intensities)
+        self._compute_next_status = status = lambda *args, **kwargs: self._np_random.choice(
+            self.status_intensities
+        )
         exp_obs, exp_reward, _, _, _ = self.step(action)
 
         if (state_bb is not None) and (action_bb is not None):
             state_ranges = [
-                range(state_bb[0][i], state_bb[1][i] + 1)
-                for i in range(len(state_bb[0]))
+                range(state_bb[0][i], state_bb[1][i] + 1) for i in range(len(state_bb[0]))
             ]
 
             state_candidates = []
@@ -222,7 +231,9 @@ class SamplingModel(ModelBase):
                 upper_obs[1] = self.status_to_idx[upper_obs[1]]
                 exp_obs[1] = self.status_to_idx[exp_obs[1]]
 
-            self._compute_next_status = status = lambda *args, **kwargs: self._np_random.choice(self.status_intensities)
+            self._compute_next_status = status = lambda *args, **kwargs: self._np_random.choice(
+                self.status_intensities
+            )
 
             return Prediction(
                 obs=tuple(exp_obs),
@@ -233,11 +244,11 @@ class SamplingModel(ModelBase):
                 upper_reward=upper_reward,
             )
 
-        if 'prev_status_indicator' in exp_obs.keys():
-            exp_obs['prev_status_indicator'] = self.status_to_idx[exp_obs['prev_status_indicator']]
+        if "prev_status_indicator" in exp_obs.keys():
+            exp_obs["prev_status_indicator"] = self.status_to_idx[exp_obs["prev_status_indicator"]]
 
-        if 'status_indicator' in exp_obs.keys():
-            exp_obs['status_indicator'] = self.status_to_idx[exp_obs['status_indicator']]
+        if "status_indicator" in exp_obs.keys():
+            exp_obs["status_indicator"] = self.status_to_idx[exp_obs["status_indicator"]]
 
         exp_obs = [int(val) for val in np.hstack(list(exp_obs.values()))]
         return Prediction(obs=tuple(exp_obs), reward=exp_reward)

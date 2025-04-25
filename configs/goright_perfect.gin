@@ -7,16 +7,16 @@ TrainingConfig.max_horizon         = 5
 TrainingConfig.tau                 = 1.0
 
 TrainingConfig.environment_id      = "GoRight-v0"
-TrainingConfig.model_type          = "expectation"
-TrainingConfig.uncertainty_type    = "bbi"
-TrainingConfig.obs_shape           = (11,2,2)
-TrainingConfig.show_status_ind     = False
+TrainingConfig.model_type          = "perfect"
+TrainingConfig.uncertainty_type    = "unselective"
+TrainingConfig.obs_shape           = (11,3,2,2)
+TrainingConfig.show_status_ind     = True
 TrainingConfig.show_prev_status_ind= False
 TrainingConfig.status_intensities  = [0,5,10]
 
 TrainingConfig.experiment_name     = "BBI"
-TrainingConfig.notes               = "BBI with GoRight environment"
-TrainingConfig.run_group           = "goright_bbi_wo_status"
+TrainingConfig.notes               = "GoRight environment with the perfect model and h=5"
+TrainingConfig.run_group           = "goright_perfect"
 
-run_seeds.n_seeds = 30
-run_seeds.start_seed = 0
+run_training.n_seeds = 100
+run_training.start_seed = 0

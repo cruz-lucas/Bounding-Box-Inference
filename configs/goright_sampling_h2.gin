@@ -16,5 +16,5 @@ TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "GoRight environment with unselective planning using sampling model with h=2"
 TrainingConfig.run_group           = "goright_sampling_h2"
 
-run_seeds.n_seeds = 100
-run_seeds.start_seed = 0
+run_training.n_seeds = 100
+run_training.start_seed = 0

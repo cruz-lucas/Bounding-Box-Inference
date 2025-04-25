@@ -1,6 +1,6 @@
 # Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning
 
-This repository contains the implementation and replication code for the paper:
+This repository is my attempt to reproduce the method and results in the paper (**IT'S NOT THE OFFICIAL CODEBASE**):
 
 > **Talvitie et al. (2024). Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning.**
 > *Reinforcement Learning Journal, vol. 5, 2024, pp. 2440–2460.*
@@ -61,7 +61,7 @@ uv pip install .
 The primary training script is `train.py`. You can run it directly via:
 
 ```bash
-python train.py --config_file="goright_bbi"
+python src/main.py --config_file="goright_bbi"
 ```
 
 The following command-line arguments are available:

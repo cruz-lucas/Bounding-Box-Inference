@@ -1,20 +1,30 @@
-"""Module with training configuration Classes."""
+"""Utility classes."""
 
 from dataclasses import asdict, dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import gin
 import numpy as np
-import wandb.util
-from wandb.sdk.wandb_run import Run
 
-import wandb
+
+@dataclass
+class Prediction:
+    """Dataclass to store model predictions."""
+
+    obs: Tuple[int, ...]
+    reward: float
+    lower_obs: Optional[Tuple[int, ...]] = None
+    upper_obs: Optional[Tuple[int, ...]] = None
+    lower_reward: Optional[float] = None
+    upper_reward: Optional[float] = None
+    prev_status: Optional[int] = None
 
 
 @gin.configurable
 @dataclass
 class TrainingConfig:
     """Training configuration parameters."""
+
     seed: int
     n_episodes: int = 600
     n_steps: int = 500
@@ -43,6 +53,7 @@ class TrainingConfig:
 @dataclass
 class EpisodeMetrics:
     """Metrics collected during a training/evaluation episode."""
+
     total_reward: float = 0.0
     discounted_return: float = 0.0
     td_errors: List[float] = field(default_factory=list)
@@ -50,11 +61,11 @@ class EpisodeMetrics:
     def update(self, reward: float, discount: float, step: int, td_error: Optional[float] = None):
         """Update metrics with new step information."""
         self.total_reward += reward
-        self.discounted_return += (discount ** step) * reward
+        self.discounted_return += (discount**step) * reward
         if td_error is not None:
             self.td_errors.append(td_error)
 
-    def to_dict(self, prefix: str = '') -> Dict[str, float]:
+    def to_dict(self, prefix: str = "") -> Dict[str, float]:
         """Convert metrics to dictionary with optional prefix."""
         metrics = {
             "total_reward": self.total_reward,
@@ -77,9 +88,9 @@ class EpisodeMetrics:
             Dict: _description_
         """
         if prefix is not None:
-            prefix = f'{prefix}/'
+            prefix = f"{prefix}/"
         else:
-            prefix = ''
+            prefix = ""
 
         metrics = {
             f"{prefix}total_reward": self.total_reward,
@@ -87,34 +98,3 @@ class EpisodeMetrics:
         }
 
         return metrics
-
-
-def setup_wandb(config: TrainingConfig) -> Run:
-    """Setup wandn experiment and start run."""
-    run = wandb.init(
-        project=config.experiment_name,
-        name=f"{config.run_group}_seed_{config.seed}",
-        config=config.to_dict(),
-        reinit=True,
-        group=config.run_group,
-        dir=f"./wandb_{config.run_group}_seed_{config.seed}",
-        notes=config.notes,
-        id=f"{config.run_group}_seed_{config.seed}_{wandb.util.generate_id()}",
-    )
-    return run
-
-
-class TrainingError(Exception):
-    """Custom exception for training errors that can be pickled."""
-    def __init__(self, seed: int, error_msg: str = "", traceback_str: str = ""):
-        """Training error exception class.
-
-        Args:
-            seed (int): Run seed to reproduce error.
-            error_msg (str, optional): Error message. Defaults to "".
-            traceback_str (str, optional): Traceback. Defaults to "".
-        """
-        self.seed = seed
-        self.error_msg = error_msg
-        self.traceback_str = traceback_str
-        super().__init__(self.error_msg)

@@ -18,5 +18,5 @@ TrainingConfig.experiment_name     = "BBI"
 TrainingConfig.notes               = "GoRight environment with Q-learning"
 TrainingConfig.run_group           = "goright_qlearning_wo_status"
 
-run_seeds.n_seeds = 50
-run_seeds.start_seed = 0
+run_training.n_seeds = 100
+run_training.start_seed = 0

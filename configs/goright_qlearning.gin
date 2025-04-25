@@ -1,22 +1,22 @@
 TrainingConfig.n_episodes          = 600
 TrainingConfig.n_steps             = 500
-TrainingConfig.step_size           = 0.1
+TrainingConfig.step_size           = 0.05
 TrainingConfig.initial_value       = 0.0
 TrainingConfig.discount            = 0.9
-TrainingConfig.max_horizon         = 5
+TrainingConfig.max_horizon         = 1
 TrainingConfig.tau                 = 1.0
 
 TrainingConfig.environment_id      = "GoRight-v0"
-TrainingConfig.model_type          = "expectation"
-TrainingConfig.uncertainty_type    = "bbi"
+TrainingConfig.model_type          = "none"
+TrainingConfig.uncertainty_type    = "none"
 TrainingConfig.obs_shape           = (11,3,2,2)
 TrainingConfig.show_status_ind     = True
 TrainingConfig.show_prev_status_ind= False
 TrainingConfig.status_intensities  = [0,5,10]
 
 TrainingConfig.experiment_name     = "BBI"
-TrainingConfig.notes               = "BBI with GoRight environment"
-TrainingConfig.run_group           = "goright_bbi"
+TrainingConfig.notes               = "GoRight environment with Q-learning"
+TrainingConfig.run_group           = "goright_qlearning"
 
-run_seeds.n_seeds = 5
-run_seeds.start_seed = 500
+run_training.n_seeds = 100
+run_training.start_seed = 0

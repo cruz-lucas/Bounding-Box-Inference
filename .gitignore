@@ -164,6 +164,7 @@ cython_debug/
 # experiment tracking
 wandb/
 artifacts/
+mlruns/
 *.npy
 logs/*
 *.out
