@@ -1,6 +1,6 @@
 # Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning
 
-This repository is my attempt to reproduce the method and results in the paper (**IT'S NOT THE OFFICIAL CODEBASE**):
+This repository is my attempt to reproduce the method and results in the paper:
 
 > **Talvitie et al. (2024). Bounding-Box Inference for Error-Aware Model-Based Reinforcement Learning.**
 > *Reinforcement Learning Journal, vol. 5, 2024, pp. 2440–2460.*
